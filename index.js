@@ -42,6 +42,30 @@ async function run() {
       console.log(error);
       res.status(500).send({ err: "Something went wrong" });
     }
+
+    // get all todos
+    try {
+      app.get("/todos", async (req, res) => {
+        const todos = await todosCollection.find({}).toArray();
+        res.status(202).send({ message: "success", data: todos });
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(400).send({ error: "Bad Request" });
+    }
+
+    // get single todo
+    try {
+      app.get("/todo/:id", async (req, res) => {
+        const todo = await todosCollection.findOne({
+          _id: ObjectId(req.params.id),
+        });
+        res.status(202).send({ message: "success", data: todo });
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(400).send({ error: "Bad Request" });
+    }
   } catch {
     // client.close()
   }
