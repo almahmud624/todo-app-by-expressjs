@@ -30,11 +30,16 @@ async function run() {
       app.post("/todo", async (req, res) => {
         const newTodo = req.body;
         newTodo.status = "pending";
+
         // add id on todo with auto increment
-        const updateId = await todosCollection.updateMany(
-          {},
-          { $inc: { id: 1 } }
-        );
+        const todos = await todosCollection.find({}).toArray();
+        const todoId = todos[todos.length - 1];
+        if (!todoId?.id) {
+          newTodo.id = 1;
+        } else {
+          newTodo.id = todoId.id + 1;
+        }
+
         const result = await todosCollection.insertOne(newTodo);
         res.status(201).send({ message: "New todo created" });
       });
@@ -61,6 +66,27 @@ async function run() {
           _id: ObjectId(req.params.id),
         });
         res.status(202).send({ message: "success", data: todo });
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(400).send({ error: "Bad Request" });
+    }
+    // update todo status
+    try {
+      app.post("/todo/:id/done", async (req, res) => {
+        const status = req.path.split("/")[3];
+        const updateStatus = {
+          $set: {
+            status: status,
+          },
+        };
+        const todo = await todosCollection.updateOne(
+          {
+            _id: ObjectId(req.params.id),
+          },
+          updateStatus
+        );
+        res.status(200).send({ message: "Status Updated" });
       });
     } catch (error) {
       console.log(error);
