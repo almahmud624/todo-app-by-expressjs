@@ -71,6 +71,7 @@ async function run() {
       console.log(error);
       res.status(400).send({ error: "Bad Request" });
     }
+
     // update todo status
     try {
       app.post("/todo/:id/done", async (req, res) => {
@@ -87,6 +88,19 @@ async function run() {
           updateStatus
         );
         res.status(200).send({ message: "Status Updated" });
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(400).send({ error: "Bad Request" });
+    }
+
+    // delete todo
+    try {
+      app.delete("/todo/:id/delete", async (req, res) => {
+        const todo = await todosCollection.deleteOne({
+          _id: ObjectId(req.params.id),
+        });
+        res.status(200).send({ message: "Delete Success" });
       });
     } catch (error) {
       console.log(error);
