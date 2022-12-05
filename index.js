@@ -26,24 +26,22 @@ async function run() {
     const todosCollection = client.db("todo-app").collection("todos");
     const todosCounterCollection = client.db("todo-app").collection("counter");
 
-    // create new todostry {
+    // create new todo
     app.post("/todo", async (req, res) => {
       const newTodo = req.body;
-
-      // add id on todo with auto increment
-      const todos = await todosCollection.find({}).toArray();
-      const todoId = todos[todos.length - 1];
-      if (!todoId?.id) {
-        newTodo.id = 1;
-      } else {
-        newTodo.id++;
+      // todo description missing handel
+      if (!newTodo.description) {
+        res.status(400).send({ message: "Todo description missing" });
+        return;
       }
 
+      // add id on todo with auto increment
       todosCounterCollection.findOneAndUpdate(
         { _id: "todoId" },
         { $inc: { id: 1 } },
         { new: true },
         (error, cd) => {
+          // id increment set
           let count;
           if (cd?.value === null) {
             const newid = todosCounterCollection.insertOne({
