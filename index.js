@@ -24,87 +24,103 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const todosCollection = client.db("todo-app").collection("todos");
+    const todosCounterCollection = client.db("todo-app").collection("counter");
 
-    // create new todos
-    try {
-      app.post("/todo", async (req, res) => {
-        const newTodo = req.body;
-        newTodo.status = "pending";
+    // create new todostry {
+    app.post("/todo", async (req, res) => {
+      const newTodo = req.body;
 
-        // add id on todo with auto increment
-        const todos = await todosCollection.find({}).toArray();
-        const todoId = todos[todos.length - 1];
-        if (!todoId?.id) {
-          newTodo.id = 1;
-        } else {
-          newTodo.id = todoId.id + 1;
+      // add id on todo with auto increment
+      const todos = await todosCollection.find({}).toArray();
+      const todoId = todos[todos.length - 1];
+      if (!todoId?.id) {
+        newTodo.id = 1;
+      } else {
+        newTodo.id++;
+      }
+
+      todosCounterCollection.findOneAndUpdate(
+        { _id: "todoId" },
+        { $inc: { id: 1 } },
+        { new: true },
+        (error, cd) => {
+          let count;
+          if (cd?.value === null) {
+            const newid = todosCounterCollection.insertOne({
+              _id: "todoId",
+              id: 1,
+            });
+            count = 1;
+          } else {
+            count = cd?.value?.id + 1;
+          }
+          newTodo.status = "pending";
+          newTodo.id = count;
+          const result = todosCollection.insertOne(newTodo);
+          res.status(201).send({ message: "New todo created" });
         }
-
-        const result = await todosCollection.insertOne(newTodo);
-        res.status(201).send({ message: "New todo created" });
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(500).send({ err: "Something went wrong" });
-    }
+      );
+    });
 
     // get all todos
-    try {
-      app.get("/todos", async (req, res) => {
-        const todos = await todosCollection.find({}).toArray();
+    app.get("/todos", async (req, res) => {
+      const todos = await todosCollection.find({}).toArray();
+      if (todos.length > 0) {
         res.status(202).send({ message: "success", data: todos });
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(400).send({ error: "Bad Request" });
-    }
+      } else {
+        res.status(400).send({ message: "Data not found" });
+      }
+    });
 
     // get single todo
-    try {
-      app.get("/todo/:id", async (req, res) => {
-        const todo = await todosCollection.findOne({
-          _id: ObjectId(req.params.id),
-        });
-        res.status(202).send({ message: "success", data: todo });
+    app.get("/todo/:id", async (req, res) => {
+      const todo = await todosCollection.findOne({
+        id: Number(req.params.id),
       });
-    } catch (error) {
-      console.log(error);
-      res.status(400).send({ error: "Bad Request" });
-    }
+      if (todo) {
+        res.status(202).send({ message: "success", data: todo });
+      } else {
+        res.status(404).send({ message: "Data not found" });
+      }
+    });
 
     // update todo status
-    try {
-      app.post("/todo/:id/done", async (req, res) => {
-        const status = req.path.split("/")[3];
-        const updateStatus = {
-          $set: {
-            status: status,
-          },
-        };
-        const todo = await todosCollection.updateOne(
-          {
-            _id: ObjectId(req.params.id),
-          },
-          updateStatus
-        );
+    app.post("/todo/:id/done", async (req, res) => {
+      const status = req.path.split("/")[3];
+      const updateStatus = {
+        $set: {
+          status: status,
+        },
+      };
+      const todo = await todosCollection.updateOne(
+        {
+          id: Number(req.params.id),
+        },
+        updateStatus
+      );
+
+      if (todo.modifiedCount > 0) {
         res.status(200).send({ message: "Status Updated" });
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(400).send({ error: "Bad Request" });
-    }
+      } else {
+        res.status(400).send({ error: "Status update failed" });
+      }
+    });
 
     // delete todo
     try {
       app.delete("/todo/:id/delete", async (req, res) => {
         const todo = await todosCollection.deleteOne({
-          _id: ObjectId(req.params.id),
+          id: Number(req.params.id),
         });
-        res.status(200).send({ message: "Delete Success" });
+        if (todo.deletedCount > 0) {
+          res.status(200).send({ message: "Delete Success" });
+        } else {
+          res.status(400).send({ error: "Operation failed" });
+        }
       });
     } catch (error) {
       console.log(error);
-      res.status(400).send({ error: "Bad Request" });
+      res.status(400).send({ error: "Operation failed" });
     }
   } catch {
     // client.close()
